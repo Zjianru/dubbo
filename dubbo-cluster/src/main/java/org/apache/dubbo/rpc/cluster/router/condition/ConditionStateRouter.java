@@ -76,6 +76,7 @@ public class ConditionStateRouter<T> extends AbstractStateRouter<T> {
     protected static final Pattern ROUTE_PATTERN = Pattern.compile("([&!=,]*)\\s*([^&!=,\\s]+)");
     protected Map<String, ConditionMatcher> whenCondition;
     protected Map<String, ConditionMatcher> thenCondition;
+    // 自定义配置的 SPI 扩展内容
     protected List<ConditionMatcherFactory> matcherFactories;
 
     private final boolean enabled;
@@ -103,15 +104,23 @@ public class ConditionStateRouter<T> extends AbstractStateRouter<T> {
         }
     }
 
+    /**
+     * 初始化条件路由规则
+     *
+     * @param rule 路由规则
+     */
     public void init(String rule) {
         try {
             if (rule == null || rule.trim().length() == 0) {
                 throw new IllegalArgumentException("Illegal route rule!");
             }
-            rule = rule.replace("consumer.", "").replace("provider.", "");
+            rule = rule.replace("consumer.", "")
+                    .replace("provider.", "");
             int i = rule.indexOf("=>");
-            String whenRule = i < 0 ? null : rule.substring(0, i).trim();
-            String thenRule = i < 0 ? rule.trim() : rule.substring(i + 2).trim();
+            String whenRule = i < 0 ? null : rule.substring(0, i)
+                    .trim();
+            String thenRule = i < 0 ? rule.trim() : rule.substring(i + 2)
+                    .trim();
             Map<String, ConditionMatcher> when =
                     StringUtils.isBlank(whenRule) || "true".equals(whenRule) ? new HashMap<>() : parseRule(whenRule);
             Map<String, ConditionMatcher> then =
@@ -124,6 +133,13 @@ public class ConditionStateRouter<T> extends AbstractStateRouter<T> {
         }
     }
 
+    /**
+     * 解析路由规则
+     *
+     * @param rule 路由规则
+     * @return parsed result
+     * @throws ParseException exception
+     */
     private Map<String, ConditionMatcher> parseRule(String rule) throws ParseException {
         Map<String, ConditionMatcher> condition = new HashMap<>();
         if (StringUtils.isBlank(rule)) {
@@ -133,18 +149,35 @@ public class ConditionStateRouter<T> extends AbstractStateRouter<T> {
         ConditionMatcher matcherPair = null;
         // Multiple values
         Set<String> values = null;
+        // 通过正则表达式匹配路由规则 ROUTE_PATTERN => ([&!=,]*)\s*([^&!=,\s]+)
+        // 这个表达式看起来不是很好理解，第一个括号内的表达式用于匹配"&", "!", "=" 和 "," 等符号。
+        // 第二括号内的用于匹配英文字母，数字等字符。举个例子说明一下：
+        //    host = 2.2.2.2 & host != 1.1.1.1 & method = hello
+        // 匹配结果如下：
+        //     括号一      括号二
+        // 1.  null       host
+        // 2.   =         2.2.2.2
+        // 3.   &         host
+        // 4.   !=        1.1.1.1
+        // 5.   &         method
+        // 6.   =         hello
         final Matcher matcher = ROUTE_PATTERN.matcher(rule);
         while (matcher.find()) { // Try to match one by one
             String separator = matcher.group(1);
             String content = matcher.group(2);
             // Start part of the condition expression.
+            // 分隔符为空，表示匹配的是表达式的开始部分
             if (StringUtils.isEmpty(separator)) {
                 matcherPair = this.getMatcher(content);
+                // 存储 <匹配项, MatchPair> 键值对，比如 <host, MatchPair>
                 condition.put(content, matcherPair);
             }
             // The KV part of the condition expression
+            // 如果分隔符为 &，表明接下来也是一个条件
             else if ("&".equals(separator)) {
+                // 尝试从 condition 获取 MatchPair
                 if (condition.get(content) == null) {
+                    // 未获取到 MatchPair，重新创建一个，并放入 condition 中
                     matcherPair = this.getMatcher(content);
                     condition.put(content, matcherPair);
                 } else {
@@ -152,6 +185,7 @@ public class ConditionStateRouter<T> extends AbstractStateRouter<T> {
                 }
             }
             // The Value in the KV part.
+            // 分隔符为 =
             else if ("=".equals(separator)) {
                 if (matcherPair == null) {
                     throw new ParseException(
@@ -166,6 +200,7 @@ public class ConditionStateRouter<T> extends AbstractStateRouter<T> {
                 values.add(content);
             }
             // The Value in the KV part.
+            // 分隔符为 !=
             else if ("!=".equals(separator)) {
                 if (matcherPair == null) {
                     throw new ParseException(
@@ -243,6 +278,7 @@ public class ConditionStateRouter<T> extends AbstractStateRouter<T> {
                 return BitList.emptyList();
             }
             BitList<Invoker<T>> result = invokers.clone();
+            // 移除掉未命中规则的 invoker
             result.removeIf(invoker -> !matchThen(invoker.getUrl(), url));
 
             if (!result.isEmpty()) {
