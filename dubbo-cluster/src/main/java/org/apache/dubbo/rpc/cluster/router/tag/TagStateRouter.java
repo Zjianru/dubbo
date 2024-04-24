@@ -74,6 +74,7 @@ public class TagStateRouter<T> extends AbstractStateRouter<T> implements Configu
             if (event.getChangeType().equals(ConfigChangeType.DELETED)) {
                 this.tagRouterRule = null;
             } else {
+                // 解析配置信息，组成标签路由规则
                 TagRouterRule rule = TagRuleParser.parse(event.getContent());
                 rule.init(this);
                 this.tagRouterRule = rule;

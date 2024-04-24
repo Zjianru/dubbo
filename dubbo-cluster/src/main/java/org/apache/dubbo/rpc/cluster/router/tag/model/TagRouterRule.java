@@ -69,6 +69,10 @@ public class TagRouterRule extends AbstractRouterRule {
         return tagRouterRule;
     }
 
+    /**
+     * 处理标签路由规则初始化
+     * @param router router
+     */
     public void init(TagStateRouter<?> router) {
         if (!isValid()) {
             return;

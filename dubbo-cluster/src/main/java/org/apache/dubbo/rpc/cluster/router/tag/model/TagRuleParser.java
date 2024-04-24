@@ -26,6 +26,7 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 /**
  * Parse raw rule into structured tag rule
+ * 将原始规则解析为结构化标记规则
  */
 public class TagRuleParser {
 
