@@ -40,6 +40,7 @@ import static org.apache.dubbo.common.utils.StringUtils.isEmpty;
 
 /**
  * Configuration for the metadata report.
+ * 元数据报告的配置
  *
  * @export
  */

@@ -24,13 +24,13 @@ import static org.apache.dubbo.common.extension.ExtensionScope.FRAMEWORK;
 import static org.apache.dubbo.rpc.Constants.PROXY_KEY;
 
 /**
- * ProxyFactory. (API/SPI, Singleton, ThreadSafe)
+ * ProxyFactory. (API/SPI, Singleton, ThreadSafe)、 代理工厂接口
  */
 @SPI(value = "javassist", scope = FRAMEWORK)
 public interface ProxyFactory {
 
     /**
-     * create proxy.
+     * create proxy. 创建 Proxy ，在引用服务调用。
      *
      * @param invoker
      * @return proxy
@@ -39,7 +39,7 @@ public interface ProxyFactory {
     <T> T getProxy(Invoker<T> invoker) throws RpcException;
 
     /**
-     * create proxy.
+     * create proxy. 创建 Invoker ，在暴露服务时调用。
      *
      * @param invoker
      * @return proxy
@@ -48,12 +48,12 @@ public interface ProxyFactory {
     <T> T getProxy(Invoker<T> invoker, boolean generic) throws RpcException;
 
     /**
-     * create invoker.
+     * create invoker. 该方法创建的 Invoker ，下一步会提交给 Protocol ，从 Invoker 转换到 Exporter
      *
      * @param <T>
-     * @param proxy
-     * @param type
-     * @param url
+     * @param proxy Service 对象
+     * @param type  Service 接口类型
+     * @param url   Service 对应的 Dubbo URL
      * @return invoker
      */
     @Adaptive({PROXY_KEY})

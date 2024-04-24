@@ -29,6 +29,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.URL_MERGE_PROCES
 
 /**
  * The service consumer default configuration
+ *  消费者默认配置
  *
  * @export
  */
@@ -37,44 +38,44 @@ public class ConsumerConfig extends AbstractReferenceConfig {
     private static final long serialVersionUID = 2827274711143680600L;
 
     /**
-     * Consumer thread pool type: cached, fixed, limit, eager
+     * Consumer thread pool type: cached, fixed, limit, eager 线程池类型
      */
     private String threadpool;
 
     /**
-     * Consumer threadpool core thread size
+     * Consumer threadpool core thread size 核心线程数量
      */
     private Integer corethreads;
 
     /**
-     * Consumer threadpool thread size
+     * Consumer threadpool thread size 线程数量
      */
     private Integer threads;
 
     /**
-     * Consumer threadpool queue size
+     * Consumer threadpool queue size 线程池队列大小
      */
     private Integer queues;
 
     /**
      * By default, a TCP long-connection communication is shared between the consumer process and the provider process.
-     * This property can be set to share multiple TCP long-connection communications. Note that only the dubbo protocol takes effect.
+     * This property can be set to share multiple TCP long-connection communications. Note that only the dubbo protocol
+     * takes effect. 设置此属性以共享多个TCP长连接通信。请注意，只有dubbo协议才会生效
      */
     private Integer shareconnections;
 
     /**
-     * Url Merge Processor
-     * Used to customize the URL merge of consumer and provider
+     * Url Merge Processor Used to customize the URL merge of consumer and provider Url合并处理器
      */
     private String urlMergeProcessor;
 
     /**
-     * Thread num for asynchronous refer pool size
+     * Thread num for asynchronous refer pool size 异步引用池大小的线程数
      */
     private Integer referThreadNum;
 
     /**
-     * Whether refer should run in background or not.
+     * Whether refer should run in background or not. 引用是否应该在后台运行
      *
      * @see ModuleConfig#setBackground(Boolean)
      * @deprecated replace with {@link ModuleConfig#setBackground(Boolean)}
@@ -82,7 +83,7 @@ public class ConsumerConfig extends AbstractReferenceConfig {
     private Boolean referBackground;
 
     /**
-     * enable mesh mode
+     * enable mesh mode mesh mode flag
      *
      * @since 3.1.0
      */

@@ -31,13 +31,19 @@ import java.util.function.Function;
 
 /**
  * (API, Prototype, NonThreadSafe)
- *
+ * <p>
  * An RPC {@link Result}.
- *
- * Known implementations are:
- * 1. {@link AsyncRpcResult}, it's a {@link CompletionStage} whose underlying value signifies the return value of an RPC call.
- * 2. {@link AppResponse}, it inevitably inherits {@link CompletionStage} and {@link Future}, but you should never treat AppResponse as a type of Future,
- *    instead, it is a normal concrete type.
+ * <p>
+ * Known implementations are: 1. {@link AsyncRpcResult}, it's a {@link CompletionStage} whose underlying value signifies
+ * the return value of an RPC call. 2. {@link AppResponse}, it inevitably inherits {@link CompletionStage} and
+ * {@link Future}, but you should never treat AppResponse as a type of Future, instead, it is a normal concrete type.
+ * 会话域 (NonThreadSafe)，它持有调用过程中返回值，异常等
+ * <p>
+ * 已知的实现是:
+ * <p>
+ * 1.AsyncRpcResult  这是一个完成阶段其基础值表示RPC调用的返回值。
+ * <p>
+ * 2.AppResponse 它不可避免地继承完成阶段和未来,但您永远不应该将 AppResponse 视为未来的一种类型，相反，它是一种正常的具体类型
  *
  * @serial Don't change the class name and package name.
  * @see org.apache.dubbo.rpc.Invoker#invoke(Invocation)
@@ -46,7 +52,7 @@ import java.util.function.Function;
 public interface Result extends Serializable {
 
     /**
-     * Get invoke result.
+     * Get invoke result.获取调用结果
      *
      * @return result. if no result return null.
      */
@@ -64,7 +70,7 @@ public interface Result extends Serializable {
     void setException(Throwable t);
 
     /**
-     * Has exception.
+     * Has exception.是否发生了异常
      *
      * @return has exception.
      */
@@ -74,11 +80,7 @@ public interface Result extends Serializable {
      * Recreate.
      * <p>
      * <code>
-     * if (hasException()) {
-     * throw getException();
-     * } else {
-     * return getValue();
-     * }
+     * if (hasException()) { throw getException(); } else { return getValue(); }
      * </code>
      *
      * @return result.
@@ -172,8 +174,8 @@ public interface Result extends Serializable {
     /**
      * Add a callback which can be triggered when the RPC call finishes.
      * <p>
-     * Just as the method name implies, this method will guarantee the callback being triggered under the same context as when the call was started,
-     * see implementation in {@link Result#whenCompleteWithContext(BiConsumer)}
+     * Just as the method name implies, this method will guarantee the callback being triggered under the same context
+     * as when the call was started, see implementation in {@link Result#whenCompleteWithContext(BiConsumer)}
      *
      * @param fn
      * @return

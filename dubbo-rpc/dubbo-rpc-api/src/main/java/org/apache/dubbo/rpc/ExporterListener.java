@@ -20,25 +20,25 @@ import org.apache.dubbo.common.extension.ExtensionScope;
 import org.apache.dubbo.common.extension.SPI;
 
 /**
- * ExporterListener. (SPI, Singleton, ThreadSafe)
+ * ExporterListener. (SPI, Singleton, ThreadSafe) Exporter 监听器
  */
 @SPI(scope = ExtensionScope.FRAMEWORK)
 public interface ExporterListener {
 
     /**
-     * The exporter exported.
+     * The exporter exported. 当服务暴露完成
      *
-     * @param exporter
-     * @throws RpcException
+     * @param exporter exporter
+     * @throws RpcException exception
      * @see org.apache.dubbo.rpc.Protocol#export(Invoker)
      */
     void exported(Exporter<?> exporter) throws RpcException;
 
     /**
-     * The exporter unexported.
+     * The exporter unexported. 当服务取消暴露
      *
-     * @param exporter
-     * @throws RpcException
+     * @param exporter exporter
+     * @throws RpcException exception
      * @see org.apache.dubbo.rpc.Exporter#unexport()
      */
     void unexported(Exporter<?> exporter);

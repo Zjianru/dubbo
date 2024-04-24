@@ -213,6 +213,13 @@ public final class Version {
         return "";
     }
 
+    /**
+     * get dubbo implementation version
+     *
+     * @param cls            class
+     * @param defaultVersion default version
+     * @return dubbo version
+     */
     public static String getVersion(Class<?> cls, String defaultVersion) {
         try {
             // find version info from MANIFEST.MF first

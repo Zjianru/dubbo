@@ -28,7 +28,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
- * Invocation. (API, Prototype, NonThreadSafe)
+ * Invocation. (API, Prototype, NonThreadSafe) 持有调用过程中的变量，比如方法名，参数等
  *
  * @serial Don't change the class name and package name.
  * @see org.apache.dubbo.rpc.Invoker#invoke(Invocation)
@@ -64,12 +64,14 @@ public interface Invocation {
     Class<?>[] getParameterTypes();
 
     /**
-     * get parameter's signature, string representation of parameter types.
+     * get parameter's signature, string representation of parameter types.获取参数的签名，参数类型的字符串表示形式。
      *
      * @return parameter's signature
      */
     default String[] getCompatibleParamSignatures() {
-        return Stream.of(getParameterTypes()).map(Class::getName).toArray(String[]::new);
+        return Stream.of(getParameterTypes())
+                .map(Class::getName)
+                .toArray(String[]::new);
     }
 
     /**
@@ -154,8 +156,7 @@ public interface Invocation {
     ServiceModel getServiceModel();
 
     default ModuleModel getModuleModel() {
-        return ScopeModelUtil.getModuleModel(
-                getServiceModel() == null ? null : getServiceModel().getModuleModel());
+        return ScopeModelUtil.getModuleModel(getServiceModel() == null ? null : getServiceModel().getModuleModel());
     }
 
     Object put(Object key, Object value);
@@ -166,15 +167,15 @@ public interface Invocation {
 
     /**
      * To add invoked invokers into invocation. Can be used in ClusterFilter or Filter for tracing or debugging purpose.
-     * Currently, only support in consumer side.
+     * Currently, only support in consumer side. 将被调用的调用程序添加到调用中。可在ClusterFilter或Filter中用于跟踪或调试目的 目前，仅在消费者端支持。
      *
      * @param invoker invoked invokers
      */
     void addInvokedInvoker(Invoker<?> invoker);
 
     /**
-     * Get all invoked invokers in current invocation.
-     * NOTICE: A curtain invoker could be invoked for twice or more if retries.
+     * Get all invoked invokers in current invocation. NOTICE: A curtain invoker could be invoked for twice or more if
+     * retries. 获取当前调用中的所有 invoker。 注意: 如果重试，窗口 invoker 可能会调用多次
      *
      * @return invokers
      */
