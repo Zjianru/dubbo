@@ -62,6 +62,13 @@ public class ExtensionDirector implements ExtensionAccessor {
         return this;
     }
 
+    /**
+     * 从缓存中获取与拓展类对应的 ExtensionLoader，若缓存未命中，则创建一个新的实例
+     *
+     * @param type class
+     * @param <T>  class
+     * @return ExtensionLoader 实例
+     */
     @Override
     @SuppressWarnings("unchecked")
     public <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
@@ -73,8 +80,9 @@ public class ExtensionDirector implements ExtensionAccessor {
             throw new IllegalArgumentException("Extension type (" + type + ") is not an interface!");
         }
         if (!withExtensionAnnotation(type)) {
-            throw new IllegalArgumentException("Extension type (" + type
-                    + ") is not an extension, because it is NOT annotated with @" + SPI.class.getSimpleName() + "!");
+            throw new IllegalArgumentException(
+                    "Extension type (" + type + ") is not an extension, because it is NOT annotated with @"
+                            + SPI.class.getSimpleName() + "!");
         }
 
         // 1. find in local cache
@@ -127,7 +135,8 @@ public class ExtensionDirector implements ExtensionAccessor {
 
     private boolean isScopeMatched(Class<?> type) {
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
-        return defaultAnnotation.scope().equals(scope);
+        return defaultAnnotation.scope()
+                .equals(scope);
     }
 
     private static boolean withExtensionAnnotation(Class<?> type) {

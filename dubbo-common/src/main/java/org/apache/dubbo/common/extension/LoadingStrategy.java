@@ -18,6 +18,11 @@ package org.apache.dubbo.common.extension;
 
 import org.apache.dubbo.common.lang.Prioritized;
 
+/**
+ * SPI 加载策略
+ * 新旧版本 dubbo 兼容处理方式
+ * 存在不同的 SPI 文件路径，不同的实现即对应一个文件路径
+ */
 public interface LoadingStrategy extends Prioritized {
 
     String directory();
