@@ -818,7 +818,7 @@ public class ExtensionLoader<T> {
                 extensionInstances.putIfAbsent(clazz, createExtensionInstance(clazz));
                 instance = (T) extensionInstances.get(clazz);
                 // bean 实例化的前后处理
-                insatnce = postProcessBeforeInitialization(instance, name);
+                instance = postProcessBeforeInitialization(instance, name);
                 // 向实例中注入依赖
                 injectExtension(instance);
                 instance = postProcessAfterInitialization(instance, name);
