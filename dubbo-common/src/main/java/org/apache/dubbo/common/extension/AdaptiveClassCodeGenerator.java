@@ -100,7 +100,8 @@ public class AdaptiveClassCodeGenerator {
     }
 
     /**
-     * generate and return class code
+     * generate and return class code 自适应拓展类代码生成
+     *
      * @param sort - whether sort methods
      */
     public String generate(boolean sort) {
@@ -177,7 +178,7 @@ public class AdaptiveClassCodeGenerator {
     }
 
     /**
-     * generate method declaration
+     * generate method declaration 生成方法声明
      */
     private String generateMethod(Method method) {
         String methodReturnType = method.getReturnType().getCanonicalName();
@@ -231,11 +232,16 @@ public class AdaptiveClassCodeGenerator {
             int urlTypeIndex = getUrlTypeIndex(method);
 
             // found parameter in URL type
+            // urlTypeIndex != -1，表示参数列表中存在 URL 参数
             if (urlTypeIndex != -1) {
                 // Null Point check
+                // 为 URL 类型参数生成判空代码，格式如下：
+                // if (arg + urlTypeIndex == null)
+                //     throw new IllegalArgumentException("url == null");
                 code.append(generateUrlNullCheck(urlTypeIndex));
             } else {
                 // did not find parameter in URL type
+                // 参数列表中不存在 URL 类型参数
                 code.append(generateUrlAssignmentIndirectly(method));
             }
 
