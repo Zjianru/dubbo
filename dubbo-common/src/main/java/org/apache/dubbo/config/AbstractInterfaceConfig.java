@@ -910,6 +910,10 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         this.singleton = singleton;
     }
 
+    /**
+     * 初始化 service 元信息
+     * @param interfaceConfig config
+     */
     protected void initServiceMetadata(AbstractInterfaceConfig interfaceConfig) {
         serviceMetadata.setVersion(getVersion(interfaceConfig));
         serviceMetadata.setGroup(getGroup(interfaceConfig));

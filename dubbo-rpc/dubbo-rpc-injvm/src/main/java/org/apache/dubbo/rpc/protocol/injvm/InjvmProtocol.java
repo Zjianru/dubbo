@@ -37,7 +37,7 @@ import static org.apache.dubbo.rpc.Constants.SCOPE_LOCAL;
 import static org.apache.dubbo.rpc.Constants.SCOPE_REMOTE;
 
 /**
- * InjvmProtocol
+ * InjvmProtocol 本地暴露协议实现
  */
 public class InjvmProtocol extends AbstractProtocol {
 
@@ -46,18 +46,21 @@ public class InjvmProtocol extends AbstractProtocol {
     public static final int DEFAULT_PORT = 0;
 
     public static InjvmProtocol getInjvmProtocol(ScopeModel scopeModel) {
-        return (InjvmProtocol) scopeModel.getExtensionLoader(Protocol.class).getExtension(InjvmProtocol.NAME, false);
+        return (InjvmProtocol) scopeModel.getExtensionLoader(Protocol.class)
+                .getExtension(InjvmProtocol.NAME, false);
     }
 
     static Exporter<?> getExporter(Map<String, Exporter<?>> map, URL key) {
         Exporter<?> result = null;
 
-        if (!key.getServiceKey().contains("*")) {
+        if (!key.getServiceKey()
+                .contains("*")) {
             result = map.get(key.getServiceKey());
         } else {
             if (CollectionUtils.isNotEmptyMap(map)) {
                 for (Exporter<?> exporter : map.values()) {
-                    if (UrlUtils.isServiceKeyMatch(key, exporter.getInvoker().getUrl())) {
+                    if (UrlUtils.isServiceKeyMatch(key, exporter.getInvoker()
+                            .getUrl())) {
                         result = exporter;
                         break;
                     }
@@ -75,11 +78,13 @@ public class InjvmProtocol extends AbstractProtocol {
 
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
-        return new InjvmExporter<T>(invoker, invoker.getUrl().getServiceKey(), exporterMap);
+        return new InjvmExporter<T>(invoker, invoker.getUrl()
+                .getServiceKey(), exporterMap);
     }
 
     @Override
     public <T> Invoker<T> protocolBindingRefer(Class<T> serviceType, URL url) throws RpcException {
+        // 创建 InjvmExporter
         return new InjvmInvoker<T>(serviceType, url, url.getServiceKey(), exporterMap);
     }
 

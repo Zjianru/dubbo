@@ -293,6 +293,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     /**
      * for early init serviceMetadata
+     * 初始化 service 元信息
      */
     public void init() {
         if (this.initialized.compareAndSet(false, true)) {
@@ -300,37 +301,51 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             ExtensionLoader<ServiceListener> extensionLoader = this.getExtensionLoader(ServiceListener.class);
             this.serviceListeners.addAll(extensionLoader.getSupportedExtensionInstances());
         }
+        // 初始化 service 元信息
         initServiceMetadata(provider);
         serviceMetadata.setServiceType(getInterfaceClass());
         serviceMetadata.setTarget(getRef());
         serviceMetadata.generateServiceKey();
     }
 
+    /**
+     * 暴露服务
+     *
+     * @param registerType register type of current export action. 当前导出操作的注册类型
+     */
     @Override
     public void export(RegisterTypeEnum registerType) {
+        // 跳过已被暴露
         if (this.exported) {
             return;
         }
 
         if (getScopeModel().isLifeCycleManagedExternally()) {
             // prepare model for reference
-            getScopeModel().getDeployer().prepare();
+            getScopeModel().getDeployer()
+                    .prepare();
         } else {
             // ensure start module, compatible with old api usage
-            getScopeModel().getDeployer().start();
+            getScopeModel().getDeployer()
+                    .start();
         }
 
+        // 同一时间只能有一个线程进行服务暴露
         synchronized (this) {
+            // 再次确认是否服务已被暴露
             if (this.exported) {
                 return;
             }
-
+            // 刷新配置
             if (!this.isRefreshed()) {
                 this.refresh();
             }
+            // 进入服务暴露逻辑
             if (this.shouldExport()) {
+                // 初始化 service 元信息
                 this.init();
 
+                // 配置了延迟暴露
                 if (shouldDelay()) {
                     // should register if delay export
                     doDelayExport();
@@ -340,6 +355,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                     // should not register by default
                     doExport(RegisterTypeEnum.MANUAL_REGISTER);
                 } else {
+                    // 立即暴露服务
                     doExport(registerType);
                 }
             }
@@ -541,6 +557,11 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         checkAndUpdateSubConfigs();
     }
 
+    /**
+     * 进行服务暴露
+     *
+     * @param registerType 注册类型
+     */
     protected synchronized void doExport(RegisterTypeEnum registerType) {
         if (unexported) {
             throw new IllegalStateException("The service " + interfaceClass.getName() + " has already unexported!");
@@ -552,10 +573,17 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         if (StringUtils.isEmpty(path)) {
             path = interfaceName;
         }
+        // 暴露服务 url
         doExportUrls(registerType);
         exported();
     }
 
+    /**
+     * 暴露服务 url
+     * 允许使用不同的协议导出服务，也允许向多个注册中心注册服务
+     *
+     * @param registerType 注册类型
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls(RegisterTypeEnum registerType) {
         ModuleServiceRepository repository = getScopeModel().getServiceRepository();
@@ -571,13 +599,8 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         } else {
             serviceDescriptor = repository.registerService(getInterfaceClass());
         }
-        providerModel = new ProviderModel(
-                serviceMetadata.getServiceKey(),
-                ref,
-                serviceDescriptor,
-                getScopeModel(),
-                serviceMetadata,
-                interfaceClassLoader);
+        providerModel = new ProviderModel(serviceMetadata.getServiceKey(), ref, serviceDescriptor, getScopeModel(),
+                serviceMetadata, interfaceClassLoader);
 
         // Compatible with dependencies on ServiceModel#getServiceConfig(), and will be removed in a future version
         providerModel.setConfig(this);
@@ -585,13 +608,13 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         providerModel.setDestroyRunner(getDestroyRunner());
         repository.registerProvider(providerModel);
 
-        List<URL> registryURLs = !Boolean.FALSE.equals(isRegister())
-                ? ConfigValidationUtils.loadRegistries(this, true)
-                : Collections.emptyList();
+        // 获取注册中心列表
+        List<URL> registryURLs = !Boolean.FALSE.equals(isRegister()) ? ConfigValidationUtils.loadRegistries(this,
+                true) : Collections.emptyList();
 
         for (ProtocolConfig protocolConfig : protocols) {
-            String pathKey = URL.buildKey(
-                    getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), group, version);
+            String pathKey = URL.buildKey(getContextPath(protocolConfig).map(p -> p + "/" + path)
+                    .orElse(path), group, version);
             // stub service will use generated service name
             if (!serverService) {
                 // In case user specified path, register service one more time to map it to path.
@@ -603,6 +626,13 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         providerModel.setServiceUrls(urls);
     }
 
+    /**
+     * 进行服务暴露
+     *
+     * @param protocolConfig 协议配置
+     * @param registryURLs   注册中心 url
+     * @param registerType   注册类型
+     */
     private void doExportUrlsFor1Protocol(
             ProtocolConfig protocolConfig, List<URL> registryURLs, RegisterTypeEnum registerType) {
         Map<String, String> map = buildAttributes(protocolConfig);
@@ -610,17 +640,22 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         // remove null key and null value
         map.keySet().removeIf(key -> StringUtils.isEmpty(key) || StringUtils.isEmpty(map.get(key)));
         // init serviceMetadata attachments
-        serviceMetadata.getAttachments().putAll(map);
+        serviceMetadata.getAttachments()
+                .putAll(map);
 
+        // 根据协议组装服务 url
         URL url = buildUrl(protocolConfig, map);
 
+        // 服务执行线程池
         processServiceExecutor(url);
 
         if (CollectionUtils.isEmpty(registryURLs)) {
             registerType = RegisterTypeEnum.NEVER_REGISTER;
         }
+        // 进行服务暴露
         exportUrl(url, registryURLs, registerType);
 
+        // 处理方法 metrics
         initServiceMethodMetrics(url);
     }
 
@@ -647,25 +682,31 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         });
     }
 
+    /**
+     * 服务执行线程池
+     *
+     * @param url url
+     */
     private void processServiceExecutor(URL url) {
         if (getExecutor() != null) {
             String mode = application.getExecutorManagementMode();
             if (!EXECUTOR_MANAGEMENT_MODE_ISOLATION.equals(mode)) {
-                logger.warn(
-                        COMMON_ISOLATED_EXECUTOR_CONFIGURATION_ERROR,
-                        "",
-                        "",
+                logger.warn(COMMON_ISOLATED_EXECUTOR_CONFIGURATION_ERROR, "", "",
                         "The current executor management mode is " + mode
-                                + ", the configured service executor cannot take effect unless the mode is configured as "
+                                + ", the configured service executor cannot take effect unless the mode is configured"
+                                + " as "
                                 + EXECUTOR_MANAGEMENT_MODE_ISOLATION);
                 return;
             }
             /**
-             * Because executor is not a string type, it cannot be attached to the url parameter, so it is added to URL#attributes
+             * Because executor is not a string type, it cannot be attached to the url parameter, so it is added to
+             * URL#attributes
              * and obtained it in IsolationExecutorRepository#createExecutor method
              */
-            providerModel.getServiceMetadata().addAttribute(SERVICE_EXECUTOR, getExecutor());
-            url.getAttributes().put(SERVICE_EXECUTOR, getExecutor());
+            providerModel.getServiceMetadata()
+                    .addAttribute(SERVICE_EXECUTOR, getExecutor());
+            url.getAttributes()
+                    .put(SERVICE_EXECUTOR, getExecutor());
         }
     }
 
@@ -850,6 +891,13 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         return url;
     }
 
+    /**
+     * 进行服务暴露
+     *
+     * @param url          服务 url
+     * @param registryURLs 注册 url
+     * @param registerType 注册类型
+     */
     private void exportUrl(URL url, List<URL> registryURLs, RegisterTypeEnum registerType) {
         String scope = url.getParameter(SCOPE_KEY);
         // don't export when none is configured
@@ -857,12 +905,14 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
             // export to local if the config is not remote (export to remote only when config is remote)
             if (!SCOPE_REMOTE.equalsIgnoreCase(scope)) {
+                // 暴露服务到本地
                 exportLocal(url);
             }
 
             // export to remote if the config is not local (export to local only when config is local)
             if (!SCOPE_LOCAL.equalsIgnoreCase(scope)) {
                 // export to extra protocol is used in remote export
+                // ext-protocol 是一个配置项，它允许用户在一个端口上同时配置多种协议，实现端口复用
                 String extProtocol = url.getParameter(EXT_PROTOCOL, "");
                 List<String> protocols = new ArrayList<>();
 
@@ -873,7 +923,9 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                             .build();
                 }
 
+                // 服务暴露 [ 默认 dubbo 协议 ]
                 url = exportRemote(url, registryURLs, registerType);
+
                 if (!isGeneric(generic) && !getScopeModel().isInternal()) {
                     MetadataUtils.publishServiceDefinition(url, providerModel.getServiceModel(), getApplicationModel());
                 }
@@ -883,13 +935,16 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                     protocols.addAll(Arrays.asList(extProtocols));
                 }
                 // export extra protocols
+                // 根据配置的协议暴露服务 [ 未额外配置则不走该逻辑 ]
                 for (String protocol : protocols) {
                     if (StringUtils.isNotBlank(protocol)) {
                         URL localUrl = URLBuilder.from(url)
+                                // 处理 url 的协议信息
                                 .setProtocol(protocol)
                                 .addParameter(IS_EXTRA, Boolean.TRUE.toString())
                                 .removeParameter(EXT_PROTOCOL)
                                 .build();
+                        // 服务暴露
                         localUrl = exportRemote(localUrl, registryURLs, registerType);
                         if (!isGeneric(generic) && !getScopeModel().isInternal()) {
                             MetadataUtils.publishServiceDefinition(
@@ -903,21 +958,33 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         this.urls.add(url);
     }
 
+    /**
+     * 完成服务暴露
+     *
+     * @param url          服务 url
+     * @param registryURLs 注册中心 url
+     * @param registerType 注册类型
+     * @return 服务 url
+     */
     private URL exportRemote(URL url, List<URL> registryURLs, RegisterTypeEnum registerType) {
         if (CollectionUtils.isNotEmpty(registryURLs) && registerType != RegisterTypeEnum.NEVER_REGISTER) {
+            // 暴露服务到注册中心
             for (URL registryURL : registryURLs) {
                 if (SERVICE_REGISTRY_PROTOCOL.equals(registryURL.getProtocol())) {
                     url = url.addParameterIfAbsent(SERVICE_NAME_MAPPING_KEY, "true");
                 }
 
                 // if protocol is only injvm ,not register
+                // 暴露到本地,不处理
                 if (LOCAL_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
                     continue;
                 }
 
                 url = url.addParameterIfAbsent(DYNAMIC_KEY, registryURL.getParameter(DYNAMIC_KEY));
+                // 加载监视器链接
                 URL monitorUrl = ConfigValidationUtils.loadMonitor(this, registryURL);
                 if (monitorUrl != null) {
+                    // 将监视器链接作为参数添加到 url 中
                     url = url.putAttribute(MONITOR_KEY, monitorUrl);
                 }
 
@@ -935,7 +1002,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                         logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
                     }
                 }
-
+                // 暴露服务
                 doExportUrl(registryURL.putAttribute(EXPORT_KEY, url), true, registerType);
             }
 
@@ -945,27 +1012,38 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
             }
 
+            // 暴露服务到本地
             doExportUrl(url, true, registerType);
         }
 
         return url;
     }
 
+    /**
+     * 处理服务暴露
+     *
+     * @param url          服务 url
+     * @param withMetaData 是否携带元信息
+     * @param registerType 注册类型
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrl(URL url, boolean withMetaData, RegisterTypeEnum registerType) {
         if (!url.getParameter(REGISTER_KEY, true)) {
             registerType = RegisterTypeEnum.MANUAL_REGISTER;
         }
-        if (registerType == RegisterTypeEnum.NEVER_REGISTER
-                || registerType == RegisterTypeEnum.MANUAL_REGISTER
+        if (registerType == RegisterTypeEnum.NEVER_REGISTER || registerType == RegisterTypeEnum.MANUAL_REGISTER
                 || registerType == RegisterTypeEnum.AUTO_REGISTER_BY_DEPLOYER) {
             url = url.addParameter(REGISTER_KEY, false);
         }
 
+        // 为服务提供类(ref)生成 Invoker
         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
         if (withMetaData) {
+            // DelegateProviderMetaDataInvoker 用于持有 Invoker 和 ServiceConfig
             invoker = new DelegateProviderMetaDataInvoker(invoker, this);
         }
+        // 暴露服务，并生成 Exporter
+        // 调用不同协议实现的 export 方法
         Exporter<?> exporter = protocolSPI.export(invoker);
         exporters
                 .computeIfAbsent(registerType, k -> new CopyOnWriteArrayList<>())
@@ -973,16 +1051,20 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     }
 
     /**
-     * always export injvm
+     * always export injvm 暴露服务到本地
      */
     private void exportLocal(URL url) {
+        // 处理 url 信息
         URL local = URLBuilder.from(url)
+                // 设置协议头为 injvm
                 .setProtocol(LOCAL_PROTOCOL)
                 .setHost(LOCALHOST_VALUE)
                 .setPort(0)
                 .build();
-        local = local.setScopeModel(getScopeModel()).setServiceModel(providerModel);
+        local = local.setScopeModel(getScopeModel())
+                .setServiceModel(providerModel);
         local = local.addParameter(EXPORTER_LISTENER_KEY, LOCAL_PROTOCOL);
+        // 完成服务暴露
         doExportUrl(local, false, RegisterTypeEnum.AUTO_REGISTER);
         logger.info("Export dubbo service " + interfaceClass.getName() + " to local registry url : " + local);
     }

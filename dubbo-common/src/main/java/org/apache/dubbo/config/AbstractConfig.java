@@ -695,6 +695,7 @@ public abstract class AbstractConfig implements Serializable {
 
     /**
      * Dubbo config property override
+     * 刷新配置
      */
     public void refresh() {
         if (needRefresh) {

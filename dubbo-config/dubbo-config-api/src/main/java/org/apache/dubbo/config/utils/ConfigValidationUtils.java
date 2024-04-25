@@ -194,21 +194,31 @@ public class ConfigValidationUtils {
 
     public static final String IPV6_END_MARK = "]";
 
+    /**
+     * 获取注册中心配置信息
+     *
+     * @param interfaceConfig config
+     * @param provider        provider
+     * @return List
+     */
     public static List<URL> loadRegistries(AbstractInterfaceConfig interfaceConfig, boolean provider) {
         // check && override if necessary
         List<URL> registryList = new ArrayList<>();
         ApplicationConfig application = interfaceConfig.getApplication();
         List<RegistryConfig> registries = interfaceConfig.getRegistries();
         if (CollectionUtils.isNotEmpty(registries)) {
+            // 循环处理每一个注册中心配置
             for (RegistryConfig config : registries) {
                 // try to refresh registry in case it is set directly by user using config.setRegistries()
                 if (!config.isRefreshed()) {
                     config.refresh();
                 }
+                // 地址信息处理
                 String address = config.getAddress();
                 if (StringUtils.isEmpty(address)) {
                     address = ANYHOST_VALUE;
                 }
+                // 开始组装注册中心 url
                 if (!RegistryConfig.NO_AVAILABLE.equalsIgnoreCase(address)) {
                     Map<String, String> map = new HashMap<String, String>();
                     AbstractConfig.appendParameters(map, application);
@@ -218,8 +228,10 @@ public class ConfigValidationUtils {
                     if (!map.containsKey(PROTOCOL_KEY)) {
                         map.put(PROTOCOL_KEY, DUBBO_PROTOCOL);
                     }
+                    // 原始信息组装
                     List<URL> urls = UrlUtils.parseURLs(address, map);
 
+                    // 信息封装
                     for (URL url : urls) {
                         url = URLBuilder.from(url)
                                 .addParameter(REGISTRY_KEY, url.getProtocol())

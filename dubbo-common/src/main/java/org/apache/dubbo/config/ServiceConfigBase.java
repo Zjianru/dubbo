@@ -418,6 +418,7 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
 
     /**
      * export service and auto start application instance
+     * 导出服务和自动启动应用程序实例
      */
     public final void export() {
         export(RegisterTypeEnum.AUTO_REGISTER);
@@ -431,6 +432,7 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
 
     /**
      * Export service to network
+     * 暴露服务
      *
      * @param registerType register type of current export action.
      */

@@ -40,6 +40,8 @@ import javassist.CtMethod;
 
 /**
  * Wrapper.
+ * Wrapper 用于“包裹”目标类，是一个抽象类，仅可通过 getWrapper(Class) 方法创建子类
+ * 在创建 Wrapper 子类的过程中，子类代码生成逻辑会对 getWrapper 方法传入的 Class 对象进行解析，拿到诸如类方法，类成员变量等信息
  */
 public abstract class Wrapper {
     private static final ConcurrentMap<Class<?>, Wrapper> WRAPPER_MAP =
@@ -124,7 +126,14 @@ public abstract class Wrapper {
         return ConcurrentHashMapUtils.computeIfAbsent(WRAPPER_MAP, c, Wrapper::makeWrapper);
     }
 
+    /**
+     * 通过反射创建 Wrapper 实例
+     *
+     * @param c class 目标类
+     * @return wrapper
+     */
     private static Wrapper makeWrapper(Class<?> c) {
+        // 检测 c 是否为基本类型，若是则抛出异常
         if (c.isPrimitive()) {
             throw new IllegalArgumentException("Can not create wrapper for primitive type: " + c);
         }
@@ -132,12 +141,17 @@ public abstract class Wrapper {
         String name = c.getName();
         ClassLoader cl = ClassUtils.getClassLoader(c);
 
+        // c1 用于存储 setPropertyValue 方法代码
         StringBuilder c1 = new StringBuilder("public void setPropertyValue(Object o, String n, Object v){ ");
+        // c2 用于存储 getPropertyValue 方法代码
         StringBuilder c2 = new StringBuilder("public Object getPropertyValue(Object o, String n){ ");
-        StringBuilder c3 =
-                new StringBuilder("public Object invokeMethod(Object o, String n, Class[] p, Object[] v) throws "
+        // c3 用于存储 invokeMethod 方法代码
+        StringBuilder c3 = new StringBuilder(
+                "public Object invokeMethod(Object o, String n, Class[] p, Object[] v) throws "
                         + InvocationTargetException.class.getName() + "{ ");
 
+        // 生成类型转换代码及异常捕捉代码，比如：
+        //   DemoService w; try { w = ((DemoServcie) $1); }}catch(Throwable e){ throw new IllegalArgumentException(e); }
         c1.append(name)
                 .append(" w; try{ w = ((")
                 .append(name)
@@ -151,10 +165,18 @@ public abstract class Wrapper {
                 .append(name)
                 .append(")$1); }catch(Throwable e){ throw new IllegalArgumentException(e); }");
 
-        Map<String, Class<?>> pts = new HashMap<>(); // <property name, property types>
-        Map<String, Method> ms = new LinkedHashMap<>(); // <method desc, Method instance>
-        List<String> mns = new ArrayList<>(); // method names.
-        List<String> dmns = new ArrayList<>(); // declaring method names.
+        // pts 用于存储成员变量名和类型
+        // <property name, property types>
+        Map<String, Class<?>> pts = new HashMap<>();
+        // ms 用于存储方法描述信息（可理解为方法签名）及 Method 实例
+        // <method desc, Method instance>
+        Map<String, Method> ms = new LinkedHashMap<>();
+        // mns 为方法名列表
+        // method names.
+        List<String> mns = new ArrayList<>();
+        // dmns 用于存储“定义在当前类中的方法”的名称
+        // declaring method names.
+        List<String> dmns = new ArrayList<>();
 
         // get all public field.
         for (Field f : c.getFields()) {

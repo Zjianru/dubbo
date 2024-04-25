@@ -33,6 +33,7 @@ import static org.apache.dubbo.common.constants.LoggerCodeConstants.PROXY_FAILED
 
 /**
  * JavassistRpcProxyFactory
+ * Dubbo 默认的 ProxyFactory 实现类
  */
 public class JavassistProxyFactory extends AbstractProxyFactory {
     private static final ErrorTypeAwareLogger logger =
@@ -76,16 +77,32 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
         }
     }
 
+    /**
+     * 获取 invoker 实现
+     *
+     * @param proxy Service 对象
+     * @param type  Service 接口类型
+     * @param url   Service 对应的 Dubbo URL
+     * @param <T>   Service 接口类型
+     * @return invoker
+     */
     @Override
     public <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) {
         try {
             // TODO Wrapper cannot handle this scenario correctly: the classname contains '$'
-            final Wrapper wrapper =
-                    Wrapper.getWrapper(proxy.getClass().getName().indexOf('$') < 0 ? proxy.getClass() : type);
+            // 为目标类创建 Wrapper
+            final Wrapper wrapper = Wrapper.getWrapper(proxy.getClass()
+                    .getName()
+                    .indexOf('$') < 0 ? proxy.getClass() : type);
+            // 创建匿名 Invoker 类对象，并实现 doInvoke 方法。
             return new AbstractProxyInvoker<T>(proxy, type, url) {
                 @Override
-                protected Object doInvoke(T proxy, String methodName, Class<?>[] parameterTypes, Object[] arguments)
-                        throws Throwable {
+                protected Object doInvoke(
+                        T proxy,
+                        String methodName,
+                        Class<?>[] parameterTypes,
+                        Object[] arguments) throws Throwable {
+                    // 将调用请求转发给 Wrapper 类的 invokeMethod 方法
                     return wrapper.invokeMethod(proxy, methodName, parameterTypes, arguments);
                 }
             };
@@ -93,20 +110,13 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
             // try fall back to JDK proxy factory
             try {
                 Invoker<T> invoker = jdkProxyFactory.getInvoker(proxy, type, url);
-                logger.error(
-                        PROXY_FAILED,
-                        "",
-                        "",
+                logger.error(PROXY_FAILED, "", "",
                         "Failed to generate invoker by Javassist failed. Fallback to use JDK proxy success. "
-                                + "Interfaces: " + type,
-                        fromJavassist);
+                                + "Interfaces: " + type, fromJavassist);
                 // log out error
                 return invoker;
             } catch (Throwable fromJdk) {
-                logger.error(
-                        PROXY_FAILED,
-                        "",
-                        "",
+                logger.error(PROXY_FAILED, "", "",
                         "Failed to generate invoker by Javassist failed. Fallback to use JDK proxy is also failed. "
                                 + "Interfaces: " + type + " Javassist Error.",
                         fromJavassist);

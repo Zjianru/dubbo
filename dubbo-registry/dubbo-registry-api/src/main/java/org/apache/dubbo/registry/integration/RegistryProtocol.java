@@ -209,27 +209,28 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
         return map;
     }
 
+    /**
+     * 服务注册
+     *
+     * @param registry              注册中心
+     * @param registeredProviderUrl url
+     */
     private static void register(Registry registry, URL registeredProviderUrl) {
-        ApplicationDeployer deployer =
-                registeredProviderUrl.getOrDefaultApplicationModel().getDeployer();
+        ApplicationDeployer deployer = registeredProviderUrl.getOrDefaultApplicationModel()
+                .getDeployer();
         try {
             deployer.increaseServiceRefreshCount();
             String registryName = Optional.ofNullable(registry.getUrl())
-                    .map(u -> u.getParameter(
-                            RegistryConstants.REGISTRY_CLUSTER_KEY,
+                    .map(u -> u.getParameter(RegistryConstants.REGISTRY_CLUSTER_KEY,
                             UrlUtils.isServiceDiscoveryURL(u) ? u.getParameter(REGISTRY_KEY) : u.getProtocol()))
                     .filter(StringUtils::isNotEmpty)
                     .orElse("unknown");
-            MetricsEventBus.post(
-                    RegistryEvent.toRsEvent(
-                            registeredProviderUrl.getApplicationModel(),
-                            registeredProviderUrl.getServiceKey(),
-                            1,
-                            Collections.singletonList(registryName)),
-                    () -> {
-                        registry.register(registeredProviderUrl);
-                        return null;
-                    });
+            MetricsEventBus.post(RegistryEvent.toRsEvent(registeredProviderUrl.getApplicationModel(),
+                    registeredProviderUrl.getServiceKey(), 1, Collections.singletonList(registryName)), () -> {
+                // 注册服务
+                registry.register(registeredProviderUrl);
+                return null;
+            });
         } finally {
             deployer.decreaseServiceRefreshCount();
         }
@@ -240,10 +241,23 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
         model.addStatedUrl(new ProviderModel.RegisterStatedURL(registeredProviderUrl, registryUrl, registered));
     }
 
+    /**
+     * 暴露服务 包含服务导出与服务注册两个过程
+     *
+     * @param originInvoker Service invoker 服务的执行体
+     * @param <T>           T
+     * @return T
+     * @throws RpcException exception
+     */
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
+        // 获取注册中心 URL，以 zookeeper 注册中心为例，得到的示例 URL 如下：
+        // zookeeper://127.0.0.1:2181/com.alibaba.dubbo.registry.RegistryService?application=demo-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F172.17.48.52%3A20880%2Fcom.alibaba.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Ddemo-provider
         URL registryUrl = getRegistryUrl(originInvoker);
+
         // url to export locally
+        // 获取已注册的服务提供者 URL，比如：
+        // dubbo://172.17.48.52:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=demo-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello
         URL providerUrl = getProviderUrl(originInvoker);
 
         // Subscribe the override data
@@ -263,12 +277,14 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
         // url to registry
+        // 获取注册中心
         final Registry registry = getRegistry(registryUrl);
         final URL registeredProviderUrl = customizeURL(providerUrl, registryUrl);
 
         // decide if we need to delay publish (provider itself and registry should both need to register)
         boolean register = providerUrl.getParameter(REGISTER_KEY, true) && registryUrl.getParameter(REGISTER_KEY, true);
         if (register) {
+            // 服务注册
             register(registry, registeredProviderUrl);
         }
 
@@ -287,10 +303,12 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
                 .convert(Boolean.class, ENABLE_26X_CONFIGURATION_LISTEN, true)) {
             if (!registry.isServiceDiscovery()) {
                 // Deprecated! Subscribe to override rules in 2.6.x or before.
+                // 向注册中心进行订阅 override 数据
                 registry.subscribe(overrideSubscribeUrl, overrideSubscribeListener);
             }
         }
 
+        // 监听器
         notifyExport(exporter);
         // Ensure that a new exporter instance is returned every time export
         return new DestroyableExporter<>(exporter);
@@ -318,17 +336,26 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
         return serviceConfigurationListener.overrideUrl(providerUrl);
     }
 
+    /**
+     * 暴露服务
+     *
+     * @param originInvoker invoker
+     * @param providerUrl   providerUrl
+     * @param <T>           T
+     * @return T
+     */
     @SuppressWarnings("unchecked")
     private <T> ExporterChangeableWrapper<T> doLocalExport(final Invoker<T> originInvoker, URL providerUrl) {
         String providerUrlKey = getProviderUrlKey(originInvoker);
         String registryUrlKey = getRegistryUrlKey(originInvoker);
+        // 创建 Invoker 为委托类对象
         Invoker<?> invokerDelegate = new InvokerDelegate<>(originInvoker, providerUrl);
-
-        ReferenceCountExporter<?> exporter =
-                exporterFactory.createExporter(providerUrlKey, () -> protocol.export(invokerDelegate));
+        // 调用 protocol 的 export 方法暴露服务
+        ReferenceCountExporter<?> exporter = exporterFactory.createExporter(providerUrlKey,
+                () -> protocol.export(invokerDelegate));
+        // 处理缓存
         return (ExporterChangeableWrapper<T>) bounds.computeIfAbsent(providerUrlKey, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(
-                        registryUrlKey,
+                .computeIfAbsent(registryUrlKey,
                         s -> new ExporterChangeableWrapper<>((ReferenceCountExporter<T>) exporter, originInvoker));
     }
 
@@ -447,14 +474,14 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
     }
 
     /**
-     * Get an instance of registry based on the address of invoker
+     * Get an instance of registry based on the address of invoker 获取注册中心
      *
-     * @param registryUrl
-     * @return
+     * @param registryUrl url
+     * @return Registry
      */
     protected Registry getRegistry(final URL registryUrl) {
-        RegistryFactory registryFactory = ScopeModelUtil.getExtensionLoader(
-                        RegistryFactory.class, registryUrl.getScopeModel())
+        RegistryFactory registryFactory = ScopeModelUtil.getExtensionLoader(RegistryFactory.class,
+                        registryUrl.getScopeModel())
                 .getAdaptiveExtension();
         return registryFactory.getRegistry(registryUrl);
     }

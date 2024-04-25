@@ -667,8 +667,9 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
 
     /**
      * Start the bootstrap
+     * 启动 dubbo
      *
-     * @return
+     * @return 启动响应
      */
     @Override
     public Future start() {
@@ -712,6 +713,11 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
         }
     }
 
+    /**
+     * Check if any module is pending
+     *
+     * @return flag
+     */
     private boolean hasPendingModule() {
         boolean found = false;
         for (ModuleModel moduleModel : applicationModel.getModuleModels()) {

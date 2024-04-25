@@ -46,6 +46,7 @@ import static org.apache.dubbo.registry.Constants.REGISTRY_RETRY_PERIOD_KEY;
 /**
  * A template implementation of registry service that provides auto-retry ability.
  * (SPI, Prototype, ThreadSafe)
+ * 提供自动重试功能的注册表服务的模板实现
  */
 public abstract class FailbackRegistry extends AbstractRegistry {
 

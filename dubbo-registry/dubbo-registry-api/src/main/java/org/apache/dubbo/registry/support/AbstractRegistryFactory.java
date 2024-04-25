@@ -52,6 +52,12 @@ public abstract class AbstractRegistryFactory implements RegistryFactory, ScopeM
         this.registryManager = applicationModel.getBeanFactory().getBean(RegistryManager.class);
     }
 
+    /**
+     * 获取注册中心
+     *
+     * @param url Registry address, is not allowed to be empty
+     * @return Registry
+     */
     @Override
     public Registry getRegistry(URL url) {
         if (registryManager == null) {
@@ -77,7 +83,8 @@ public abstract class AbstractRegistryFactory implements RegistryFactory, ScopeM
         boolean check = url.getParameter(CHECK_KEY, true) && url.getPort() != 0;
 
         // Lock the registry access process to ensure a single instance of the registry
-        registryManager.getRegistryLock().lock();
+        registryManager.getRegistryLock()
+                .lock();
         try {
             // double check
             // fix https://github.com/apache/dubbo/issues/7265.
@@ -92,6 +99,7 @@ public abstract class AbstractRegistryFactory implements RegistryFactory, ScopeM
             }
 
             // create registry by spi/ioc
+            // 创建注册中心实例
             registry = createRegistry(url);
             if (check && registry == null) {
                 throw new IllegalStateException("Can not create registry " + url);
@@ -109,7 +117,8 @@ public abstract class AbstractRegistryFactory implements RegistryFactory, ScopeM
             }
         } finally {
             // Release the lock
-            registryManager.getRegistryLock().unlock();
+            registryManager.getRegistryLock()
+                    .unlock();
         }
 
         return registry;

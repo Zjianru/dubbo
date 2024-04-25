@@ -72,6 +72,12 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
 
     private ZookeeperClient zkClient;
 
+    /**
+     * 获取 zookeeper 注册中心实例
+     *
+     * @param url                  url
+     * @param zookeeperTransporter 由 SPI 在运行时注入，类型为 ZookeeperTransporter$Adaptive
+     */
     public ZookeeperRegistry(URL url, ZookeeperTransporter zookeeperTransporter) {
         super(url);
 
@@ -79,30 +85,29 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
             throw new IllegalStateException("registry address == null");
         }
 
+        // 获取组名，默认为 dubbo
         String group = url.getGroup(DEFAULT_ROOT);
         if (!group.startsWith(PATH_SEPARATOR)) {
+            // group = "/" + group
             group = PATH_SEPARATOR + group;
         }
 
         this.root = group;
+        // 创建 Zookeeper 客户端，默认为 CuratorZookeeperTransporter
         this.zkClient = zookeeperTransporter.connect(url);
 
+        // 添加状态监听器
         this.zkClient.addStateListener((state) -> {
             if (state == StateListener.RECONNECTED) {
-                logger.warn(
-                        REGISTRY_ZOOKEEPER_EXCEPTION,
-                        "",
-                        "",
+                logger.warn(REGISTRY_ZOOKEEPER_EXCEPTION, "", "",
                         "Trying to fetch the latest urls, in case there are provider changes during connection loss.\n"
                                 + " Since ephemeral ZNode will not get deleted for a connection lose, "
                                 + "there's no need to re-register url of this instance.");
+                // 获取最新地址
                 ZookeeperRegistry.this.fetchLatestAddresses();
             } else if (state == StateListener.NEW_SESSION_CREATED) {
-                logger.warn(
-                        REGISTRY_ZOOKEEPER_EXCEPTION,
-                        "",
-                        "",
-                        "Trying to re-register urls and re-subscribe listeners of this instance to registry...");
+                logger.warn(REGISTRY_ZOOKEEPER_EXCEPTION, "", "",
+                        "Trying to re-register urls and re-subscribe " + "listeners of this instance to registry...");
 
                 try {
                     ZookeeperRegistry.this.recover();
@@ -110,10 +115,7 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
                     logger.error(REGISTRY_ZOOKEEPER_EXCEPTION, "", "", e.getMessage(), e);
                 }
             } else if (state == StateListener.SESSION_LOST) {
-                logger.warn(
-                        REGISTRY_ZOOKEEPER_EXCEPTION,
-                        "",
-                        "",
+                logger.warn(REGISTRY_ZOOKEEPER_EXCEPTION, "", "",
                         "Url of this instance will be deleted from registry soon. "
                                 + "Dubbo client will try to re-register once a new session is created.");
             } else if (state == StateListener.SUSPENDED) {
@@ -166,10 +168,19 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
         }
     }
 
+    /**
+     * 向 zookeeper 注册信息
+     *
+     * @param url url
+     */
     @Override
     public void doRegister(URL url) {
         try {
             checkDestroyed();
+            // 通过 Zookeeper 客户端创建节点，节点路径由 toUrlPath 方法生成，路径格式如下:
+            //   /${group}/${serviceInterface}/providers/${url}
+            // 比如
+            //   /dubbo/org.apache.dubbo.DemoService/providers/dubbo%3A%2F%2F127.0.0.1......
             zkClient.create(toUrlPath(url), url.getParameter(DYNAMIC_KEY, true), true);
         } catch (Throwable e) {
             throw new RpcException(
