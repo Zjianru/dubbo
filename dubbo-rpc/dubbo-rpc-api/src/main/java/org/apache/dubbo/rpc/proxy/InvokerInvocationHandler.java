@@ -47,13 +47,30 @@ public class InvokerInvocationHandler implements InvocationHandler {
         this.serviceModel = url.getServiceModel();
     }
 
+    /**
+     * 调用 provider 服务 获取相应
+     *
+     * @param proxy  the proxy instance that the method was invoked on
+     * @param method the {@code Method} instance corresponding to the interface method invoked on the proxy instance.
+     *               The declaring class of the {@code Method} object will be the interface that the method was declared
+     *               in, which may be a superinterface of the proxy interface that the proxy class inherits the method
+     *               through.
+     * @param args   an array of objects containing the values of the arguments passed in the method invocation on the
+     *               proxy instance, or {@code null} if interface method takes no arguments. Arguments of primitive
+     *               types are wrapped in instances of the appropriate primitive wrapper class, such as
+     *               {@code java.lang.Integer} or {@code java.lang.Boolean}.
+     * @return
+     * @throws Throwable
+     */
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        // 拦截定义在 Object 类中的方法（未被子类重写），比如 wait/notify
         if (method.getDeclaringClass() == Object.class) {
             return method.invoke(invoker, args);
         }
         String methodName = method.getName();
         Class<?>[] parameterTypes = method.getParameterTypes();
+        // 非自定义类型的方法 比如 tostring() 等
         if (parameterTypes.length == 0) {
             if ("toString".equals(methodName)) {
                 return invoker.toString();
@@ -66,13 +83,9 @@ public class InvokerInvocationHandler implements InvocationHandler {
         } else if (parameterTypes.length == 1 && "equals".equals(methodName)) {
             return invoker.equals(args[0]);
         }
-        RpcInvocation rpcInvocation = new RpcInvocation(
-                serviceModel,
-                method.getName(),
-                invoker.getInterface().getName(),
-                protocolServiceKey,
-                method.getParameterTypes(),
-                args);
+        // 开始处理调用逻辑
+        RpcInvocation rpcInvocation = new RpcInvocation(serviceModel, method.getName(), invoker.getInterface()
+                .getName(), protocolServiceKey, method.getParameterTypes(), args);
 
         if (serviceModel instanceof ConsumerModel) {
             rpcInvocation.put(Constants.CONSUMER_MODEL, serviceModel);

@@ -170,14 +170,18 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
         return getInterface() + " -> " + (getUrl() == null ? "" : getUrl().getAddress());
     }
 
+    /**
+     * 调用目标方法完成调用
+     *
+     * @param inv invocation.
+     * @return result
+     * @throws RpcException excepton
+     */
     @Override
     public Result invoke(Invocation inv) throws RpcException {
         // if invoker is destroyed due to address refresh from registry, let's allow the current invoke to proceed
         if (isDestroyed()) {
-            logger.warn(
-                    PROTOCOL_FAILED_REQUEST,
-                    "",
-                    "",
+            logger.warn(PROTOCOL_FAILED_REQUEST, "", "",
                     "Invoker for service " + this + " on consumer " + NetUtils.getLocalHost() + " is destroyed, "
                             + ", dubbo version is " + Version.getVersion()
                             + ", this invoker should not be used any longer");
@@ -186,17 +190,24 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
         RpcInvocation invocation = (RpcInvocation) inv;
 
         // prepare rpc invocation
+        //前置处理
         prepareInvocation(invocation);
 
         // do invoke rpc invocation and return async result
+        // 完成调用,得到响应结果
         AsyncRpcResult asyncResult = doInvokeAndReturn(invocation);
 
         // wait rpc result if sync
+        // 异步调用的话 等待返回结果
         waitForResultIfSync(asyncResult, invocation);
 
         return asyncResult;
     }
 
+    /**
+     * 前置处理 invocation
+     * @param inv invocation
+     */
     private void prepareInvocation(RpcInvocation inv) {
         inv.setInvoker(this);
 
@@ -243,11 +254,19 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
         }
     }
 
+    /**
+     * 完成调用,得到响应结果
+     *
+     * @param invocation invocation
+     * @return AsyncRpcResult
+     */
     private AsyncRpcResult doInvokeAndReturn(RpcInvocation invocation) {
         AsyncRpcResult asyncResult;
         try {
+            // 调用目标方法
             asyncResult = (AsyncRpcResult) doInvoke(invocation);
         } catch (InvocationTargetException e) {
+            // 异常消息封装
             Throwable te = e.getTargetException();
             if (te != null) {
                 // if biz exception
@@ -271,7 +290,8 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
 
         if (setFutureWhenSync || invocation.getInvokeMode() != InvokeMode.SYNC) {
             // set server context
-            RpcContext.getServiceContext().setFuture(new FutureAdapter<>(asyncResult.getResponseFuture()));
+            RpcContext.getServiceContext()
+                    .setFuture(new FutureAdapter<>(asyncResult.getResponseFuture()));
         }
 
         return asyncResult;
@@ -347,6 +367,8 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
 
     /**
      * Specific implementation of the {@link #invoke(Invocation)} method
+     * {@link #invoke(Invocation)}} 方法的具体实现
+     * 完成具体调用逻辑,依据不同的协议进行实现
      */
     protected abstract Result doInvoke(Invocation invocation) throws Throwable;
 }

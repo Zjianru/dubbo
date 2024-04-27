@@ -44,6 +44,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * HTTP - REST 实现完成方法调用
+ *
+ * @param <T> invoker
+ */
 public class RestInvoker<T> extends AbstractInvoker<T> {
     private final ServiceRestMetadata serviceRestMetadata;
     private final ReferenceCountedClient<? extends RestClient> referenceCountedClient;
@@ -61,6 +66,12 @@ public class RestInvoker<T> extends AbstractInvoker<T> {
         this.httpConnectionPreBuildIntercepts = httpConnectionPreBuildIntercepts;
     }
 
+    /**
+     * 完成方法调用 - 发送调用请求 - [REST-HTTP] 实现
+     *
+     * @param invocation invocation
+     * @return invocation result
+     */
     @Override
     protected Result doInvoke(Invocation invocation) {
         try {
@@ -68,16 +79,15 @@ public class RestInvoker<T> extends AbstractInvoker<T> {
             Map<String, Map<ParameterTypesComparator, RestMethodMetadata>> metadataMap =
                     serviceRestMetadata.getMethodToServiceMap();
             //  get metadata
-            RestMethodMetadata restMethodMetadata = metadataMap
-                    .get(invocation.getMethodName())
+            RestMethodMetadata restMethodMetadata = metadataMap.get(invocation.getMethodName())
                     .get(ParameterTypesComparator.getInstance(invocation.getParameterTypes()));
 
             // create requestTemplate
-            RequestTemplate requestTemplate = new RequestTemplate(
-                    invocation, restMethodMetadata.getRequest().getMethod(), getUrl().getAddress());
+            RequestTemplate requestTemplate = new RequestTemplate(invocation, restMethodMetadata.getRequest()
+                    .getMethod(), getUrl().getAddress());
 
-            HttpConnectionCreateContext httpConnectionCreateContext = createHttpConnectionCreateContext(
-                    invocation, serviceRestMetadata, restMethodMetadata, requestTemplate);
+            HttpConnectionCreateContext httpConnectionCreateContext = createHttpConnectionCreateContext(invocation,
+                    serviceRestMetadata, restMethodMetadata, requestTemplate);
 
             // fill real  data
             for (HttpConnectionPreBuildIntercept intercept : httpConnectionPreBuildIntercepts) {
@@ -85,8 +95,8 @@ public class RestInvoker<T> extends AbstractInvoker<T> {
             }
 
             // TODO check rest client cannot be reused
-            CompletableFuture<RestResult> future =
-                    referenceCountedClient.getClient().send(requestTemplate);
+            CompletableFuture<RestResult> future = referenceCountedClient.getClient()
+                    .send(requestTemplate);
             CompletableFuture<AppResponse> responseFuture = new CompletableFuture<>();
             AsyncRpcResult asyncRpcResult = new AsyncRpcResult(responseFuture, invocation);
             future.whenComplete((r, t) -> {
@@ -107,13 +117,10 @@ public class RestInvoker<T> extends AbstractInvoker<T> {
                             responseFuture.completeExceptionally(new RemoteServerInternalException(r.getMessage()));
                         } else if (responseCode < 400) {
                             Method reflectMethod = restMethodMetadata.getReflectMethod();
-                            mediaType =
-                                    MediaTypeUtil.convertMediaType(reflectMethod.getReturnType(), r.getContentType());
-                            Object value = HttpMessageCodecManager.httpMessageDecode(
-                                    r.getBody(),
-                                    reflectMethod.getReturnType(),
-                                    reflectMethod.getGenericReturnType(),
-                                    mediaType);
+                            mediaType = MediaTypeUtil.convertMediaType(reflectMethod.getReturnType(),
+                                    r.getContentType());
+                            Object value = HttpMessageCodecManager.httpMessageDecode(r.getBody(),
+                                    reflectMethod.getReturnType(), reflectMethod.getGenericReturnType(), mediaType);
                             appResponse.setValue(value);
                             // resolve response attribute & attachment
                             HttpHeaderUtil.parseResponseHeader(appResponse, r);

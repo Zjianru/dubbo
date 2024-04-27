@@ -28,16 +28,15 @@ import org.apache.dubbo.common.Node;
 public interface Invoker<T> extends Node {
 
     /**
-     * get service interface.
-     * 获得 Service 接口
+     * get service interface. 获得 Service 接口
      *
      * @return service interface.
      */
     Class<T> getInterface();
 
     /**
-     * invoke.
-     * 调用方法
+     * invoke. 调用方法
+     *
      * @param invocation invocation.
      * @return result
      * @throws RpcException exception
