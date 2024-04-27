@@ -55,7 +55,7 @@ public class Proxy {
     }
 
     /**
-     * Get proxy.
+     * Get proxy. 创建代理对象
      *
      * @param ics interface class array.
      * @return Proxy instance.

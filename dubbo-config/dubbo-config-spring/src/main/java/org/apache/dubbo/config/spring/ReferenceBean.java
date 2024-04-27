@@ -346,6 +346,7 @@ public class ReferenceBean<T>
 
     /**
      * Create lazy proxy for reference.
+     * 创建延迟代理
      */
     private void createLazyProxy() {
 
@@ -379,12 +380,17 @@ public class ReferenceBean<T>
         }
     }
 
+    /**
+     * 使用 javassist 生成代理对象
+     * @param interfaces interfaces
+     */
     private void generateFromJavassistFirst(List<Class<?>> interfaces) {
         try {
             this.lazyProxy = Proxy.getProxy(interfaces.toArray(new Class[0]))
                     .newInstance(new LazyTargetInvocationHandler(new DubboReferenceLazyInitTargetSource()));
         } catch (Throwable fromJavassist) {
             // try fall back to JDK proxy factory
+            // javassist proxy 创建失败,尝试创建 JDK 代理
             try {
                 this.lazyProxy = java.lang.reflect.Proxy.newProxyInstance(
                         beanClassLoader,
@@ -417,20 +423,20 @@ public class ReferenceBean<T>
         }
     }
 
+    /**
+     * 使用 JDK 生成代理对象
+     *
+     * @param interfaces interfaces
+     */
     private void generateFromJdk(List<Class<?>> interfaces) {
         try {
-            this.lazyProxy = java.lang.reflect.Proxy.newProxyInstance(
-                    beanClassLoader,
+            this.lazyProxy = java.lang.reflect.Proxy.newProxyInstance(beanClassLoader,
                     interfaces.toArray(new Class[0]),
                     new LazyTargetInvocationHandler(new DubboReferenceLazyInitTargetSource()));
         } catch (Throwable fromJdk) {
-            logger.error(
-                    PROXY_FAILED,
-                    "",
-                    "",
+            logger.error(PROXY_FAILED, "", "",
                     "Failed to generate proxy by Javassist failed. Fallback to use JDK proxy is also failed. "
-                            + "Interfaces: " + interfaces + " JDK Error.",
-                    fromJdk);
+                            + "Interfaces: " + interfaces + " JDK Error.", fromJdk);
             throw fromJdk;
         }
     }
